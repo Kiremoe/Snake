@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class Snake : MonoBehaviour
 {
@@ -15,6 +16,7 @@ public class Snake : MonoBehaviour
     private List<SnakeBodyPart> snakeBodyPartList;
     [SerializeField] private TextMeshProUGUI gameOverText;
     [SerializeField] private TextMeshProUGUI pointsText;
+    private bool ifAbleToMove;
 
     public void Setup(LevelGrid levelGrid)
     {
@@ -26,12 +28,13 @@ public class Snake : MonoBehaviour
         gridPosition = new Vector2Int(10, 10); //miejsce startu Snake
         gridMoveTimerMax = 0.3f; // ruch co 0,3 sekundy (1f = 1 sekunda)
         gridMoveTimer = gridMoveTimerMax; //ciagly ruch
-        gridMoveDirection = new Vector2Int(1, 0); //domyœlnie ruch snake zacznie siê w prawo po ropoczêciu gry, dziêki temu nie bêdzie sta³ w miejscu zanim gracz wska¿e Snake kierunek
+        gridMoveDirection = new Vector2Int(1, 0); //domyï¿½lnie ruch snake zacznie siï¿½ w prawo po ropoczï¿½ciu gry, dziï¿½ki temu nie bï¿½dzie staï¿½ w miejscu zanim gracz wskaï¿½e Snake kierunek
 
         snakeMovePositionList = new List<Vector2Int>();
         snakeBodySize = 0;
 
         snakeBodyPartList = new List<SnakeBodyPart>(); //tworze liste o typie SnakeBodyPart
+        ifAbleToMove = true;
     }
 
     private void Update()
@@ -43,10 +46,16 @@ public class Snake : MonoBehaviour
 
     private void HandleInput()
     {
+        if (!ifAbleToMove)
+        {
+            gridMoveDirection.x = 0;
+            gridMoveDirection.y = 0;
+            return;
+        }
 
         if (Input.GetKeyDown(KeyCode.UpArrow)) //ruch w gore
         {
-            if (gridMoveDirection.y != -1) //nie mozemy poruszac sie w dol, jesli obecnie idziemy w gore, sami byœmy spowodowali kolizje z wlasnym ogonem
+            if (gridMoveDirection.y != -1) //nie mozemy poruszac sie w dol, jesli obecnie idziemy w gore, sami byï¿½my spowodowali kolizje z wlasnym ogonem
             {
                 gridMoveDirection.x = 0;
                 gridMoveDirection.y = +1;
@@ -85,23 +94,23 @@ public class Snake : MonoBehaviour
     private void HandleGridMovement()
     {
         gridMoveTimer += Time.deltaTime; //czas od poprzedniego sprawdzenia ruchu gracza
-        if (gridMoveTimer >= gridMoveTimerMax) //czy od ostatniego ruchu minê³o wystarczaj¹co du¿o czasu.
+        if (gridMoveTimer >= gridMoveTimerMax) //czy od ostatniego ruchu minï¿½o wystarczajï¿½co duï¿½o czasu.
         {
-            gridMoveTimer -= gridMoveTimerMax; //kod bêdzie siê odpala³ co 1 sekunde w celu sprawdzenia dalszego ruchu
+            gridMoveTimer -= gridMoveTimerMax; //kod bï¿½dzie siï¿½ odpalaï¿½ co 1 sekunde w celu sprawdzenia dalszego ruchu
             
 
-            snakeMovePositionList.Insert(0, gridPosition); //dodaje bie¿¹c¹ pozycjê wê¿a na pocz¹tek jego listy ruchów
+            snakeMovePositionList.Insert(0, gridPosition); //dodaje bieï¿½ï¿½cï¿½ pozycjï¿½ wï¿½a na poczï¿½tek jego listy ruchï¿½w
 
-            gridPosition += gridMoveDirection; //aktualizuje pozycjê wê¿a na siatce na podstawie jego bie¿¹cego kierunku ruchu
+            gridPosition += gridMoveDirection; //aktualizuje pozycjï¿½ wï¿½a na siatce na podstawie jego bieï¿½ï¿½cego kierunku ruchu
 
             bool snakeAteFood = levelGrid.TrySnakeEatFood(gridPosition);
-            if (snakeAteFood) //w momêcie zjedzenia jab³ka w¹¿ roœnie
+            if (snakeAteFood) //w momï¿½cie zjedzenia jabï¿½ka wï¿½ï¿½ roï¿½nie
             {
                 snakeBodySize++;
                 CreateSnakeBodyPart();
             }
 
-            if (snakeMovePositionList.Count >= snakeBodySize + 1) //sprawdzamy liste, w momencie kiedy wielkosc snake jest wiêksza lub równa, odjemienimy 1
+            if (snakeMovePositionList.Count >= snakeBodySize + 1) //sprawdzamy liste, w momencie kiedy wielkosc snake jest wiï¿½ksza lub rï¿½wna, odjemienimy 1
             {
                 snakeMovePositionList.RemoveAt(snakeMovePositionList.Count - 1);
             }
@@ -119,7 +128,7 @@ public class Snake : MonoBehaviour
 
 
             transform.position = new Vector3(gridPosition.x, gridPosition.y);
-            transform.eulerAngles = new Vector3(0, 0, GetAngleFromVector(gridMoveDirection) - 90); //-90 wynika z domyœlnych ustawieñ unity, dziêki wprowadzeniu tego g³owa bêdzie siê poprawnie obracaæ po skeceniu
+            transform.eulerAngles = new Vector3(0, 0, GetAngleFromVector(gridMoveDirection) - 90); //-90 wynika z domyï¿½lnych ustawieï¿½ unity, dziï¿½ki wprowadzeniu tego gï¿½owa bï¿½dzie siï¿½ poprawnie obracaï¿½ po skeceniu
 
             UpdateSnakeBodyParts();
 
@@ -142,11 +151,7 @@ public class Snake : MonoBehaviour
         {
             if (gridPosition == snakeMovePositionList[i])
             {
-                Debug.Log("Game Over");
-                Time.timeScale = 0;
-                gameOverText.text = "GameOver\n Your score is: " + levelGrid.Points;
-
-                // GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height / 2 - 25, 100, 50), "Game Over");
+                StartCoroutine(LoseTheGame());
             }
         }
     }
@@ -164,7 +169,7 @@ public class Snake : MonoBehaviour
         }
     }
 
-    private float GetAngleFromVector(Vector2Int dir) //dziêki tej funckji g³owa Snake, bêdzie siê obracaæ w kierunku obecengo ruchu po skrêcaniu
+    private float GetAngleFromVector(Vector2Int dir) //dziï¿½ki tej funckji gï¿½owa Snake, bï¿½dzie siï¿½ obracaï¿½ w kierunku obecengo ruchu po skrï¿½caniu
     {
         float n = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
         if (n < 0) n += 360;
@@ -176,7 +181,7 @@ public class Snake : MonoBehaviour
         return gridPosition;
     }
 
-    public List<Vector2Int> GetFullSnakeGridPositionList() //funkcja sprawdza nam aktuln¹ pozycjê naszego ca³ego snake i j¹ nam zwraca. Jest nam to potrzebne, ¿eby nie spawnowaæ jab³ka w miejscu snake
+    public List<Vector2Int> GetFullSnakeGridPositionList() //funkcja sprawdza nam aktulnï¿½ pozycjï¿½ naszego caï¿½ego snake i jï¿½ nam zwraca. Jest nam to potrzebne, ï¿½eby nie spawnowaï¿½ jabï¿½ka w miejscu snake
     {
         List<Vector2Int> gridPositionList = new List<Vector2Int>()
         {
@@ -192,7 +197,7 @@ public class Snake : MonoBehaviour
         private Vector2Int gridPosition;
         private Transform transform;
 
-        public SnakeBodyPart(int bodyIndex) //Tworzy nam "miejsce" w unity,¿eby pod³o¿yc grafikê do cia³a snake w typie SpriteRenderer
+        public SnakeBodyPart(int bodyIndex) //Tworzy nam "miejsce" w unity,ï¿½eby podï¿½oï¿½yc grafikï¿½ do ciaï¿½a snake w typie SpriteRenderer
         {
             GameObject snakeBodyGameObject = new GameObject("SnakeBody", typeof(SpriteRenderer));
             snakeBodyGameObject.GetComponent<SpriteRenderer>().sprite = GameAssets.i.snakeBodySprite;
@@ -212,12 +217,20 @@ public class Snake : MonoBehaviour
     {
         if(collision.tag == "Wall")
         {
-            Debug.Log("Game Over");
-            Time.timeScale = 0;
-            gameOverText.text = "GameOver\n Your score is: " + levelGrid.Points; 
+            StartCoroutine(LoseTheGame());
         }
     }
 
+
+    private IEnumerator LoseTheGame()
+    {
+        Debug.Log("Game Over");
+        ifAbleToMove = false;
+        gameOverText.text = "GameOver\n Your score is: " + levelGrid.Points;
+        yield return new WaitForSeconds(3);
+        Debug.Log("Wait over");
+        SceneManager.LoadScene("StartScene");
+    }
 }
 
 
